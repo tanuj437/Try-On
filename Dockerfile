@@ -4,14 +4,12 @@ FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+ENV PATH /opt/conda/bin:$PATH
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3-pip \
-    python3-dev \
-    git \
     wget \
+    git \
     libgl1-mesa-glx \
     libglib2.0-0 \
     ffmpeg \
@@ -21,40 +19,41 @@ RUN apt-get update && apt-get install -y \
     dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
-# Make sure git is available in PATH
-RUN which git
+# Install Miniconda
+RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh && \
+    /opt/conda/bin/conda clean -ya
 
-# Set the working directory to /TRY-ON to match your structure
+# Set the working directory
 WORKDIR /TRY-ON
 
-# Copy requirements first for better layer caching
+# Copy requirements first
 COPY requirements.txt .
 RUN dos2unix requirements.txt
 
-# Install runpod first separately to ensure it's available
-RUN pip3 install --no-cache-dir --upgrade pip
-RUN pip3 install --no-cache-dir runpod
+# Create and activate Conda environment
+RUN conda create -n leffa python=3.10 -y
+SHELL ["conda", "run", "-n", "leffa", "/bin/bash", "-c"]
 
-# Copy the entire project (respecting your directory structure)
-# Do this BEFORE installing requirements to ensure Git repositories can be accessed
+# Install RunPod
+RUN pip install runpod
+
+# Copy the entire project
 COPY . .
 
 # Handle line ending issues
 RUN find /TRY-ON -type f -name "*.py" -exec dos2unix {} \; || true
-RUN find /TRY-ON -type f -name "*.sh" -exec dos2unix {} \; || true
 
-# Now install requirements after copying the project
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Install requirements
+RUN pip install -r requirements.txt
 
-# Set execution permissions for Python files
-RUN chmod +x rp_handler.py
-
-# Create cache directories for better model loading
+# Create cache directories
 RUN mkdir -p /root/.cache/huggingface
 RUN mkdir -p /root/.cache/torch
 
 # Port for RunPod's health checks
 EXPOSE 8000
 
-# RunPod handler as the entrypoint
-CMD ["python3", "-u", "rp_handler.py"]
+# Set the entrypoint to run with conda environment
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "leffa", "python", "-u", "rp_handler.py"]
