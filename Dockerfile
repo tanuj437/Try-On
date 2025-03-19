@@ -9,12 +9,13 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-dev \
+    git \
     libgl1-mesa-glx \
     libglib2.0-0 \
-    git \
     ffmpeg \
     libsm6 \
     libxext6 \
+    libxrender-dev \
     dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
@@ -27,9 +28,9 @@ COPY . /TRY-ON
 # Convert files to Unix format
 RUN dos2unix /TRY-ON/requirements.txt
 
-# Upgrade pip and install dependencies
+# Upgrade pip and install dependencies in chunks to debug
 RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install -r requirements.txt
 
 # Expose port 7860 for Gradio app
 EXPOSE 7860
