@@ -15,20 +15,24 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsm6 \
     libxext6 \
+    dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory to /TRY-ON
 WORKDIR /TRY-ON
 
-# Copy all files from the current directory to the container
+# Copy all files to the container
 COPY . /TRY-ON
 
-# Upgrade pip and install required Python packages
-RUN pip3 install --upgrade pip
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Convert files to Unix format
+RUN dos2unix /TRY-ON/requirements.txt
+
+# Upgrade pip and install dependencies
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 # Expose port 7860 for Gradio app
 EXPOSE 7860
 
-# Run rp_handler.py for serverless on startup
+# Run rp_handler.py for serverless
 CMD ["python3", "rp_handler.py"]
