@@ -4,12 +4,14 @@ FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-dev \
     git \
+    wget \
     libgl1-mesa-glx \
     libglib2.0-0 \
     ffmpeg \
@@ -19,21 +21,37 @@ RUN apt-get update && apt-get install -y \
     dos2unix \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory to /TRY-ON
+# Set the working directory to /TRY-ON to match your structure
 WORKDIR /TRY-ON
 
-# Copy all files to the container
-COPY . /TRY-ON
+# Copy requirements first for better layer caching
+COPY requirements.txt .
+RUN dos2unix requirements.txt
 
-# Convert files to Unix format
-RUN dos2unix /TRY-ON/requirements.txt
+# Install runpod first separately to ensure it's available
+RUN pip3 install --no-cache-dir --upgrade pip
+RUN pip3 install --no-cache-dir runpod
 
-# Upgrade pip and install dependencies in chunks to debug
-RUN python3 -m pip install --upgrade pip
-RUN python3 -m pip install -r requirements.txt
+# Install other dependencies
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Expose port 7860 for Gradio app
-EXPOSE 7860
+# Copy the entire project (respecting your directory structure)
+COPY . .
 
-# Run rp_handler.py for serverless
-CMD ["python3", "rp_handler.py"]
+# Handle line ending issues
+RUN find /TRY-ON -type f -name "*.py" -exec dos2unix {} \;
+RUN find /TRY-ON -type f -name "*.sh" -exec dos2unix {} \; || true
+
+# Set execution permissions for Python files
+RUN chmod +x rp_handler.py
+RUN chmod +x app.py
+
+# Create cache directories for better model loading
+RUN mkdir -p /root/.cache/huggingface
+RUN mkdir -p /root/.cache/torch
+
+# Port for RunPod's health checks
+EXPOSE 8000
+
+# RunPod handler as the entrypoint
+CMD ["python3", "-u", "rp_handler.py"]
