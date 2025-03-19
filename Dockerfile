@@ -14,20 +14,17 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory
-WORKDIR /app
+# Set the working directory to /TRY-ON
+WORKDIR /TRY-ON
 
-# Copy requirements file
-COPY requirements.txt /app/requirements.txt
+# Copy all files from current directory to container
+COPY . /TRY-ON
 
 # Install required Python packages
-RUN pip3 install --no-cache-dir -r /app/requirements.txt
-
-# Copy application files
-COPY . /app
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Expose port
 EXPOSE 7860
 
-# Run the handler on serverless
+# Run rp_handler.py for serverless on startup
 CMD ["python3", "rp_handler.py"]
