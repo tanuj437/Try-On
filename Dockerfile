@@ -25,26 +25,21 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /TRY-ON
 
 # Copy requirements first for better layer caching
-COPY requirements.txt .
+COPY requirements.txt ./
 RUN dos2unix requirements.txt
 
-# Install runpod first separately to ensure it's available
-RUN pip3 install --no-cache-dir --upgrade pip
-RUN pip3 install --no-cache-dir runpod
-
 # Install other dependencies
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire project (respecting your directory structure)
-COPY . .
+COPY . ./
 
-# Handle line ending issues
+# Handle line ending issues for Python and shell files
 RUN find /TRY-ON -type f -name "*.py" -exec dos2unix {} \;
 RUN find /TRY-ON -type f -name "*.sh" -exec dos2unix {} \; || true
 
-# Set execution permissions for Python files
+# Set execution permissions for the main Python files
 RUN chmod +x rp_handler.py
-RUN chmod +x app.py
 
 # Create cache directories for better model loading
 RUN mkdir -p /root/.cache/huggingface
