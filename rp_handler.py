@@ -204,7 +204,7 @@ predictor = LeffaPredictor()
 def handler(event):
     """RunPod handler function to process inference requests."""
     try:
-        validated_input = validate(event["input"], INPUT_SCHEMA)
+        validated_input = event["input"]
 
         src_image = download_and_decode_image(validated_input["src_image"])
         ref_image = download_and_decode_image(validated_input["ref_image"])
